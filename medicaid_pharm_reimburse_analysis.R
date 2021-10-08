@@ -36,12 +36,28 @@ library(naniar)
 gg_miss_var(drug_reimburse_2019, #visualizing percent of missing values
             show_pct = TRUE)
 
-#Replacing missing values with mean: Medicaid_Amount_Reimbursed 
+# Investigating missingness, by State and Payment model
+drug_reimburse_2019 %>% 
+  arrange(State) %>% 
+  vis_miss(warn_large_data = FALSE)
+
+drug_reimburse_2019 %>% 
+  arrange(Payment_model) %>% 
+  vis_miss(warn_large_data = FALSE)
+
+# Determining if variable containing missing values follows a normal distribution
+mean(drug_reimburse_2019$Medicaid_Amount_Reimbursed, na.rm = TRUE)
+median(drug_reimburse_2019$Medicaid_Amount_Reimbursed, na.rm = TRUE)
+# Mean is larger than median indicating the distribution is skewed to the right
+# Because of this, should replace missing values with median rather than mean
+
+
+#Replacing missing values with median: Medicaid_Amount_Reimbursed 
 
 drug_reimburse_2019 <- drug_reimburse_2019 %>% 
   mutate(Medicaid_Amount_Reimbursed = ifelse(
     is.na(Medicaid_Amount_Reimbursed),
-    mean(Medicaid_Amount_Reimbursed, na.rm = TRUE),
+    median(Medicaid_Amount_Reimbursed, na.rm = TRUE),
     Medicaid_Amount_Reimbursed))
 
 
@@ -71,6 +87,7 @@ compare_model_totals <- drug_reimburse_2019 %>%
   summarise(total_phar_reimburse_USD = sum(Medicaid_Amount_Reimbursed)) 
 
 #Create bar plot of FFS & MCP pharmacy reimbursement totals
+library(scales)
 bar_model_totals <- ggplot(compare_model_totals, aes(x = Payment_model, y = total_phar_reimburse_USD,
   fill = Payment_model)) +
   geom_col(width = 0.5) +
@@ -80,10 +97,10 @@ bar_model_totals <- ggplot(compare_model_totals, aes(x = Payment_model, y = tota
     y = "Amount reimbursed to pharmacies (billions)"
   ) +
   geom_text(aes(label = comma(round(total_phar_reimburse_USD, 0)), vjust = 1.5)) +
-  scale_y_continuous(limits = c(0,110000000000),
-                  breaks = c(0, 20000000000, 50000000000, 80000000000, 
-                             110000000000),
-                     labels = c("0","30B","50B", "80B", "110B"),
+  scale_y_continuous(limits = c(0,50000000000),
+                  breaks = c(0,10000000000, 20000000000, 30000000000,
+                             40000000000, 50000000000),
+                     labels = c("0","10B", "20B","30B", "40B","50B"),
                      expand = c(0,0)
   ) +
   theme(legend.position = "none",
@@ -91,7 +108,7 @@ bar_model_totals <- ggplot(compare_model_totals, aes(x = Payment_model, y = tota
   )
 
 # Save bar plot
-ggsave("bar_model_totals.png", plot = bar_model_totals)
+ggsave("bar_model_totals_medianNA.png", plot = bar_model_totals)
 
 #importing US_regions file
 US_regions <- read_csv("US_regions.csv")
@@ -133,7 +150,7 @@ facet_plot_reimburse <- region_drug_reimburse_2019 %>%
   facet_grid (rows = vars(Region), scales = "free", switch = "y",
               space = "free_x") +
   labs (
-    title = "Amount reimbursed to pharmacies from Medicaid by payment model, state, and region, 2019",
+    title = "Amount reimbursed to pharmacies from Medicaid by payment model,\nstate, and region, 2019",
     caption = "Source: Centers for Medicare and Medicaid\nData.Medicaid.gov",
     y = "Annual amount reimbursed to pharmacies (billions)",
     fill = "Payment Model"
@@ -150,21 +167,25 @@ facet_plot_reimburse <- region_drug_reimburse_2019 %>%
        axis.text.y = element_text(size = 14),
        panel.grid.major.y = element_blank(),
        panel.grid.major.x = element_line(linetype = "dashed", color = "grey"),
-       legend.position= c(0.88,0.4),
+       legend.position= c(0.5,0.5),
        legend.background = element_rect(size = 0.5, linetype="solid", 
                                         color ="black"),
        legend.text = element_text(size = 20),
        legend.title = element_text(size = 20),
        axis.line = element_line(color = "grey50")) +
-       scale_y_continuous(limits = c(0,12500000000),
+       scale_y_continuous(limits = c(0,8000000000),
                          breaks = c(0, 2000000000, 4000000000, 6000000000,
-                                    8000000000, 10000000000, 12000000000),
-                         labels = c("0","2B", "4B", "6B", "8B", "10B", "12B"),
+                                    8000000000),
+                         labels = c("0","2B", "4B", "6B", "8B"),
                          expand = c(0,0)) 
 facet_plot_reimburse
 # For best visualization, see ggsave plot
-ggsave("facet_plot_reimburse.png", plot = facet_plot_reimburse, 
+ggsave("facet_plot_reimburse_medianNA.png", plot = facet_plot_reimburse, 
        width = 17, height = 12, units = "in")
+
+
+                      
+
 
 
                       
